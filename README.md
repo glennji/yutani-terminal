@@ -1,4 +1,6 @@
-# Terminal enclosure: build notes
+# Yutani Terminal enclosure: build notes
+
+![Side three-quarter view showing the hood's profile, the side speaker grille and the sloped grille panel below the display](images/side.png)
 
 An original retro-industrial terminal case for a mini-ITX board, a 15.6" laptop panel and a compact keyboard (293 × 107 mm by default). Overall size is about 476 × 376 × 390 mm, including the plinth and the screen hood. It prints as 15 shell pieces plus 16 clamp tabs, 2 trim strips, a two-piece screen gasket, 2 visor inserts and a 3-piece webcam, and every piece fits a 256 mm bed. The left plate quarters are 248 mm wide because of the plinth, so check your slicer's usable bed area.
 
@@ -48,7 +50,15 @@ Suggested settings: PETG or ASA (the PSU brick sits outside, but the case runs w
 In Bambu Studio, import each file and don't rotate it; the model already lays it out for printing. The hatch halves (254 mm) and left plate quarters (248 mm) come close to the P2S's 256 mm bed, so centre them and turn off the skirt or brim if the slicer complains. Print the clamp tabs, visors and trim strips as several copies on one plate.
 
 ## Rendering
-`openscad --backend=manifold --render -D solid_ghosts=true -o render.png terminal.scad`. Without `--render`, the PNG export uses preview mode, which gives up on this model and draws only the dummy parts. `solid_ghosts` draws the panel, board and keyboard dummies as solid colour, so they show up in the render.
+`openscad --backend=manifold --render -D show_ghosts=true -D solid_ghosts=true -o render.png terminal.scad`. Without `--render`, the PNG export uses preview mode, which gives up on this model and draws only the dummy parts. `show_ghosts` adds the panel, board and keyboard dummies, and `solid_ghosts` draws them as solid colour so they show up in the render.
+
+The images at the top of this file come from:
+```sh
+openscad --backend=manifold --render -D show_ghosts=true -D solid_ghosts=true --colorscheme="Tomorrow Night" \
+  --imgsize=1600,1100 --camera=230,170,165,70,0,28,1450 -o images/hero.png terminal.scad
+openscad --backend=manifold --render -D show_ghosts=true -D solid_ghosts=true --colorscheme="Tomorrow Night" \
+  --imgsize=1600,1100 --camera=230,175,165,76,0,-58,1450 -o images/side.png terminal.scad
+```
 
 ## Assembly order
 1. Press inserts into all bosses and standoffs.
@@ -57,3 +67,5 @@ In Bambu Studio, import each file and don't rotate it; the model already lays it
 4. Screw the pod to the base from inside, through the top, before closing the plate.
 5. Fit the board and I/O shield, then the plate, then the hatch.
 6. Feed the camera cable through the cradle and the sill hole, seat the camera in the tube, fit the cap, then glue the tube into the cradle at the tilt you want.
+
+![Front three-quarter view of the terminal: beige case with a rounded screen hood, dark screen surround, orange bezel buttons and a webcam on the sill, above a wedge-shaped keyboard deck on a dark plinth](images/hero.png)
