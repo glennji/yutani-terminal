@@ -10,7 +10,7 @@ These defaults are typical values. Check them against your own parts and adjust 
 - **Board**: `itx_holes`, `io_x_off` and `io_z_drop`. Test-fit the I/O shield against `base_RR` before printing the rest.
 - **Keyboard**: set `kb_w` and `kb_d` to the keyboard's footprint, and `kb_t0` / `kb_t1` to the height of its body below the keycaps at the front and back, with any feet removed (default 15 mm at both). The well is the footprint plus 2 mm all round, open to the bottom plate. Sloping ribs on the plate tilt the keyboard to the deck's 4.8° wedge (set by `deck_h0`, the deck height at the front), with the top of its body flush with the deck. Cable notches in the well's back wall are listed in `kb_notches`; keep the ribs (`kb_rib_x`) clear of them.
 - **Case badge**: the recess on the front ramp is 18.5 mm square and 1.2 mm deep. Set `badge_s` and `badge_depth` to suit your badge.
-- **Webcam**: the tube has a 19 mm bore, 57 mm deep, and suits a laptop-style strip camera module. Set `cam_d`, `cam_bore` and `cam_len` for your module. The lens hole sits at the middle of the tube.
+- **Webcam**: a 60 mm tube (`cam_len`) with a 19 mm bore 57.5 mm deep, which suits a laptop-style strip camera module. Set `cam_d`, `cam_bore` and `cam_len` for your module. The lens hole sits at the middle of the tube.
 - **Panel controller board**: there are no mounts for it. Fix it to the pod's inside back wall with VHB tape or standoffs, and route the cable down through the slot to the base.
 
 ## Pieces
