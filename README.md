@@ -29,6 +29,17 @@ These defaults are typical values. Check them against your own parts and adjust 
 | cam_cradle | 1 | Standing on its bottom. Glue its back to the sill, over the cable hole. |
 | island_L | 1 | Flat as exported. Glue into the shallow pocket on the deck left of the keyboard; the holes line up with the deck's. Dark filament makes a good contrast. |
 
+## Surface detailing
+The shell has panel lines, raised plates and indents to break up the large flat faces. They're set in the *surface detailing* block of `terminal.scad`. Raised details only go on faces that stand upright in their print orientation, and they have 45-degree sides. Faces that print on the bed (the deck and the pod sides) only get recesses.
+- **Belt line**: a 1.5 mm undercut band round the front and sides of the base, just above the plinth (`belt_*`).
+- **Armour plates**: raised 2 mm plates on the base sides that frame the side vent pockets, with dummy hex screw heads (`armour_*`, `side_pkt_*`). They make base_RL and base_RR 232 mm wide.
+- **Ramp panels**: recessed panels round the two ramp vent groups (`ramp_pnl_*`).
+- **Keyboard well**: a 2 mm chamfer on the well's top edge, and a panel line round it on the deck (`well_ch`, `well_line_off`).
+- **Pod top**: a 2 × 2 group of raised tiles at each outer corner (`tile_*`).
+- **Pod sides**: a panel line that follows the side outline, dummy screws in its corners, and a V-groove along the z seam so the glue line sits inside it (`side_pl_in`, `side_screw_in`, `seam_v_dep`).
+
+![Close-ups of the detailing: belt line and keyboard-well chamfer, side armour plate, pod-top tiles, recessed ramp panel](images/details.png)
+
 Suggested settings: PETG or ASA (the PSU brick sits outside, but the case runs warm), 4 walls, 15% infill.
 
 ## Hardware
