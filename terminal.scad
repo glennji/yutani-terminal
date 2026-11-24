@@ -182,6 +182,31 @@ spk_boss_pos = [for (a = [45:90:315]) side_spk + spk_boss_r*[cos(a), sin(a)]];
 hatch_w = 392;  hatch_h = 254;
 hatch_x0 = cx - hatch_w/2;  hatch_z0 = 6.5;
 
+// ---------- surface detailing ----------
+// Raised details only go on faces that stand upright in their print orientation, with
+// 45-degree sides; faces that print on the bed (deck, pod sides) only get recesses.
+pl_w = 1.5;  pl_dep = 1;           // panel lines: groove width and depth
+hex_d = 4.5;  hex_dep = 1;         // dummy screw heads: hex socket across corners, depth
+// belt line: a recessed band round the front and sides of the base, just above the plinth,
+// stopping where the plinth steps down at the rear. Square top, 45-degree bottom (the base
+// prints upside down, so the bottom is the edge that would otherwise overhang).
+belt_z = 15;  belt_hgt = 5;  belt_dep = 1.5;  belt_end_y = skirt_rear_y;
+// side vent pockets, and the raised armour plate round each (45-degree edges all round)
+side_pkt_y = [215, 340];  side_pkt_z = [28, 86];  side_pkt_dep = 1.5;
+armour_y = [205, 349];  armour_z = [21, 95];  armour_h = 2;
+// keyboard well: 45-degree chamfer on its top edge, and a panel line round it on the deck
+well_ch = 2;  well_line_off = 8;
+// recessed panels round the two ramp vent groups: x range, and distance up the ramp
+ramp_pnl_x = [[56, 204], [256, 404]];  ramp_pnl_s = [9, 54];  ramp_pnl_dep = 1.2;
+// raised tiles on the pod top, 2 x 2 at each outer corner (outside the top vents)
+tile_x = [14, 72];  tile_y = [84, 118];  tile_gap = 4;  tile_h = 2.5;
+// pod sides: panel line this far in from the side outline, dummy screws further in
+side_pl_in = 12;  side_screw_in = 18;
+// V panel line along the pod's z seam on both sides, so the glue line sits in the groove.
+// 1 mm deep leaves 0.5 mm beside the z-seam pin holes (x = 2.5); not on the rear, where
+// the corner pins sit right at the surface.
+seam_v_dep = 1;
+
 // colours for the assembly preview
 c_body = "#c9c4b5";  c_dark = "#3b3f44";  c_accent = "#d9822b";
 
@@ -317,10 +342,75 @@ function isl_floor(isl) = isl[3] == "raised" ? 0 : isl_sink;
 module well_box(e=0)
     translate([well_x0-e, well_y0-e, -1]) cube([well_x1-well_x0+2*e, well_y1-well_y0+2*e, front_h+2]);
 
+// a hex socket for a dummy screw head: the face is at z = 0, the socket runs into +z
+module hex_socket() translate([0, 0, -1]) cylinder(d=hex_d, h=hex_dep+1, $fn=6);
+
+// the belt-line groove: a slab round the outline minus a core that steps in by belt_dep,
+// 45 degrees at the bottom and square at the top
+module belt_cut()
+    intersection() {
+        difference() {
+            translate([0, 0, belt_z]) linear_extrude(belt_hgt) offset(delta=5) chamfer_rect(base_w, base_d, 10);
+            hull() for (p = [[0, 0], [belt_dep, belt_dep], [belt_dep, belt_hgt]])
+                translate([0, 0, belt_z+p[1]-0.005]) linear_extrude(0.01) offset(delta=-p[0]) chamfer_rect(base_w, base_d, 10);
+        }
+        translate([-10, -10, 0]) cube([base_w+20, belt_end_y+10, rear_h]);
+    }
+
+// raised plates on the side walls, armour_h proud, 45-degree edges so they print upright
+module armour_plates()
+    for (m = [0, 1]) translate([m*base_w, 0, 0]) mirror([m, 0, 0]) hull() {
+        translate([0, armour_y[0], armour_z[0]]) cube([1, armour_y[1]-armour_y[0], armour_z[1]-armour_z[0]]);
+        translate([-armour_h, armour_y[0]+armour_h, armour_z[0]+armour_h])
+            cube([0.01, armour_y[1]-armour_y[0]-2*armour_h, armour_z[1]-armour_z[0]-2*armour_h]);
+    }
+// dummy screw positions on the armour plates (y, z): centred in the border round the pocket
+armour_screws = [for (y = [(armour_y[0]+armour_h+side_pkt_y[0])/2, (armour_y[1]-armour_h+side_pkt_y[1])/2],
+                      z = [(armour_z[0]+armour_h+side_pkt_z[0])/2, (armour_z[1]-armour_h+side_pkt_z[1])/2]) [y, z]];
+
+// side vent pocket through the armour plate, 45-degree walls so its top edge (the bottom,
+// as printed upside down) doesn't overhang
+module side_pocket_cut()
+    for (m = [0, 1]) translate([m*base_w, 0, 0]) mirror([m, 0, 0])
+        let (dy = side_pkt_y[1]-side_pkt_y[0], dz = side_pkt_z[1]-side_pkt_z[0], e = armour_h+side_pkt_dep)
+        hull() {
+            translate([-armour_h-1, side_pkt_y[0]-1, side_pkt_z[0]-1]) cube([0.01, dy+2, dz+2]);
+            translate([side_pkt_dep, side_pkt_y[0]+e, side_pkt_z[0]+e]) cube([0.01, dy-2*e, dz-2*e]);
+        }
+
+// keyboard well dressing, in the on_deck frame at the well's front-centre: a chamfer on the
+// top edge, and a panel line round the sides and back that runs out on the front chamfer
+module well_dressing_cut()
+    let (w = well_x1-well_x0, l = (well_y1-well_y0)/cos(deck_a), o = well_line_off)
+    on_deck(base_w/2, well_y0) {
+        hull() {
+            translate([-w/2-well_ch, -well_ch, 0]) cube([w+2*well_ch, l+2*well_ch, 1]);
+            translate([-w/2, 0, -well_ch]) cube([w, l, 0.01]);
+        }
+        difference() {
+            translate([-w/2-o-pl_w/2, -20, -pl_dep]) cube([w+2*o+pl_w, l+o+pl_w/2+20, pl_dep+1]);
+            translate([-w/2-o+pl_w/2, -21, -pl_dep-1]) cube([w+2*o-pl_w, l+o-pl_w/2+21, pl_dep+3]);
+        }
+    }
+
+// recessed panel round a ramp vent group, in (y, z). The lower wall is upright so it doesn't
+// overhang when the rear pieces print upside down; the upper wall is at 45 degrees.
+ramp_len = norm([ramp_y1-ramp_y0, rear_h-front_h]);
+ramp_dr = [ramp_y1-ramp_y0, rear_h-front_h] / ramp_len;   // up the ramp
+ramp_nr = [-ramp_dr[1], ramp_dr[0]];                        // out of the ramp
+function ramp_pt(s, d=0) = [ramp_y0, front_h] + s*ramp_dr - d*ramp_nr;   // s up the ramp, d into it
+module ramp_panel_cut()
+    let (a = ramp_pt(ramp_pnl_s[0]), b = ramp_pt(ramp_pnl_s[1]),
+         s_low = ramp_pnl_s[0] + ramp_pnl_dep*ramp_nr[0]/ramp_dr[0])   // floor point straight below a
+    for (px = ramp_pnl_x) translate([px[0], 0, 0]) extrude_x(px[1]-px[0])
+        polygon([a + 3*ramp_nr, b + 3*ramp_nr, b, ramp_pt(ramp_pnl_s[1]-ramp_pnl_dep, ramp_pnl_dep),
+                 ramp_pt(s_low, ramp_pnl_dep), a]);
+
 module base_body() {
     difference() {
         union() {
             difference() { base_outer(); base_inner(); }
+            armour_plates();
             intersection() { base_outer(); well_box(t); }
             intersection() { base_outer(); ramp_corner_tetra(3); }   // solid behind the ramp corner facets
             // backing under sunken islands, so the recess floor keeps a full wall
@@ -346,7 +436,8 @@ module base_body() {
         translate([60, base_d+1, 30]) rotate([90,0,0]) cylinder(d=11, h=t+2);
         for (i = [0:3]) translate([board_x0, base_d-t-1, 62+i*8]) cube([170, t+2, 4]);
 
-        // ramp vents
+        // ramp vents, sitting in recessed panels
+        ramp_panel_cut();
         for (x = [62:12:194]) translate([x, ramp_y0+7, front_h-5]) cube([4, 16, rear_h]);
         for (x = [262:12:394]) translate([x, ramp_y0+7, front_h-5]) cube([4, 16, rear_h]);
         // case-badge recess, centred on the ramp between the grilles (straddles the x seam)
@@ -357,13 +448,14 @@ module base_body() {
         for (x = [60:10:200]) translate([x, 197, rear_h-t-1]) cube([3, 10, t+2]);
         for (x = [260:10:400]) translate([x, 197, rear_h-t-1]) cube([3, 10, t+2]);
 
-        // side pockets with slots
-        translate([-1, 215, 25]) cube([2.5, 125, 60]);
-        translate([base_w-1.5, 215, 25]) cube([2.5, 125, 60]);
+        // side pockets with slots, through the armour plates, and dummy screws on the plates
+        side_pocket_cut();
         for (i = [0:4]) {
-            translate([-1, 230, 33+i*10]) cube([t+2, 95, 4]);
-            translate([base_w-t-1, 230, 33+i*10]) cube([t+2, 95, 4]);
+            translate([-armour_h-1, 230, 33+i*10]) cube([armour_h+t+2, 95, 4]);
+            translate([base_w-t-1, 230, 33+i*10]) cube([armour_h+t+2, 95, 4]);
         }
+        for (m = [0, 1], p = armour_screws) translate([m*base_w, 0, 0]) mirror([m, 0, 0])
+            translate([-armour_h, p[0], p[1]]) rotate([0, 90, 0]) hex_socket();
 
         // cable pass-through and pod mounting holes in the top
         translate([60, 250, rear_h-t-1]) cube([80, 30, t+2]);
@@ -379,9 +471,11 @@ module base_body() {
         }
         // label plate, front left
         on_deck(deck_lx-14, 23) translate([0,0,-1]) linear_extrude(2) chamfer_rect(28, 14, 2);
+        // keyboard well chamfer and panel line
+        well_dressing_cut();
 
-        // decorative groove across the front, midway between the plinth and the chamfer
-        translate([-1, -1, (skirt_h+deck_h0-front_ch_h)/2-1]) cube([base_w+2, 2, 2]);
+        // belt line round the front and sides, between the plinth and the front chamfer
+        belt_cut();
 
         // seam pins: x seam
         for (p = [[2,12],[3,20],[10,15],[10,28],[well_y1+2,15],[well_y1+2,30],[160,43],
@@ -491,11 +585,39 @@ module pod_features() {
     }
 }
 
-module pod_grooves()
+// pod sides: horizontal grooves inside a panel line that follows the side outline, with a
+// dummy screw in each corner of the panel. All recessed, since the sides print on the bed.
+module pod_grooves() {
     for (side = [0,1]) translate([side==1 ? pod_w-1.2 : -1, 0, 0])
         intersection() {
-            extrude_x(2.2) offset(delta=-14) pod_profile();
+            extrude_x(2.2) offset(delta=-side_screw_in) pod_profile();
             for (i = [0:3]) translate([-1, -1, 150+i*30]) cube([5, 400, 5]);
+        }
+    for (side = [0,1]) translate([side==1 ? pod_w-pl_dep : -1, 0, 0]) extrude_x(pl_dep+1)
+        difference() {
+            offset(delta=-side_pl_in) pod_profile();
+            offset(delta=-side_pl_in-pl_w) pod_profile();
+        }
+    for (x = [0, pod_w]) translate([x, -60, pod_split_z]) rotate([-90, 0, 0]) cylinder(r=seam_v_dep, h=pod_bot_d+70, $fn=4);
+    for (p = pod_side_screws) {
+        translate([0, p[0], p[1]]) rotate([0, 90, 0]) hex_socket();
+        translate([pod_w, p[0], p[1]]) rotate([0, -90, 0]) hex_socket();
+    }
+}
+// dummy screws on the pod sides (y, z): side_screw_in in from the bottom, back, top and
+// the sloping front edge
+pod_side_screws = [for (z = [side_screw_in, pod_top_z-side_screw_in])
+                       each [[z*tan(pod_tilt) + side_screw_in/cos(pod_tilt), z], [pod_bot_d-side_screw_in, z]]];
+
+// raised tiles on the pod top, 2 x 2 at each outer corner; 45-degree sides so they print
+// with the pod lying on its side
+module pod_tiles()
+    let (w = (tile_x[1]-tile_x[0]-tile_gap)/2, d = (tile_y[1]-tile_y[0]-tile_gap)/2)
+    for (m = [0, 1], i = [0, 1], j = [0, 1]) translate([m*pod_w, 0, 0]) mirror([m, 0, 0])
+        let (x0 = tile_x[0] + i*(w+tile_gap), y0 = tile_y[0] + j*(d+tile_gap))
+        hull() {
+            translate([x0, y0, pod_top_z-1]) cube([w, d, 1]);
+            translate([x0+tile_h, y0+tile_h, pod_top_z+tile_h-0.01]) cube([w-2*tile_h, d-2*tile_h, 0.01]);
         }
 
 // hood outline in the face plane (x, u), inset by i: cheeks + roof, round top corners
@@ -563,6 +685,7 @@ module pod_body() {
             difference() { pod_solid(0); pod_solid(t); }
             intersection() { pod_solid(0); pod_features(); }
             hood();
+            pod_tiles();
             hinge_knobs();
             face_dressing();
         }
